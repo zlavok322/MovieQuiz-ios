@@ -26,7 +26,7 @@ class QuestionFactory: QuestionFactoryProtocol {
     }
     
     func loadData() {
-        moviesLoader.loadMovies { result in
+        moviesLoader.loadMovies { [weak self] result in
             DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 switch result {
