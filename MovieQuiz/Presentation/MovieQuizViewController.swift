@@ -88,13 +88,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     }
     
     private func showLoadingIndicator() {
-        activityIndicator.isHidden = false
+        activityIndicator.hidesWhenStopped = true
         activityIndicator.startAnimating()
     }
     
     private func hideLoadingIndicator() {
-        activityIndicator.isHidden = true
-        activityIndicator.stopAnimating()
+            self.activityIndicator.stopAnimating()
     }
     
     private func showNetworkError(message: String) {
@@ -105,8 +104,8 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
                                     buttonText: "Попробовать еще раз") { [weak self] _ in
             guard let self = self else { return }
             
-            self.questionFactory?.loadData()
             self.showLoadingIndicator()
+            self.questionFactory?.loadData()
             
         }
         
@@ -123,12 +122,13 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         
         alertPresenter = AlertPresenter(delegate: self)
         
-        questionFactory?.loadData()
         showLoadingIndicator()
+        questionFactory?.loadData()
     }
     
     //MARK: - QuestionFactoryDelegate
     func didReceiveNextQuestion(question: QuizQuestion?) {
+        
         guard let question = question else { return }
         
         currentQuestion = question
@@ -136,11 +136,12 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         
         DispatchQueue.main.async { [weak self] in
             self?.show(quiz: viewModel)
+            self?.activityIndicator.stopAnimating()
         }
     }
     
     func didLoadDataFromServer() {
-        activityIndicator.isHidden = true
+        activityIndicator.hidesWhenStopped = true
         questionFactory?.requestNextQuestion()
     }
 
