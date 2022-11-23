@@ -63,9 +63,11 @@ class QuestionFactory: QuestionFactoryProtocol {
             do {
                 imageData = try Data(contentsOf: movie.resizedImageURL)
             } catch {
-                DispatchQueue.main.async {
+                DispatchQueue.main.async { [weak self] in
+                    guard let self = self else { return }
                     let imageError = "Unable to load image"
                     self.delegate?.didFailToLoadData(with: ApiKeyError.imageError(imageError))
+                    return
                 }
             }
             
