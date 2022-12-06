@@ -7,22 +7,31 @@
 
 import UIKit
 
-final class MovieQuizPresenter: UIViewController {
+final class MovieQuizPresenter: QuestionFactoryDelegate {
+    private var questionFactory: QuestionFactoryProtocol?
+    private weak var viewController: MovieQuizViewController?
     var currentQuestion: QuizQuestion?
-    weak var viewController: MovieQuizViewController?
-    var questionFactory: QuestionFactoryProtocol?
+    
+    init(viewController: MovieQuizViewController) {
+        self.viewController = viewController
+        
+        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
+        questionFactory?.loadData()
+        viewController.showLoadingIndicator()
+    }
     
     private var currentQuestionIndex: Int = 0
     var correctAnswers: Int = 0
     let questionsAmount: Int = 10
     
-    
     func isLastQuestion() -> Bool {
         currentQuestionIndex == questionsAmount - 1
     }
     
-    func resetQuestionIndex() {
+    func restartGame() {
         currentQuestionIndex = 0
+        correctAnswers = 0
+        questionFactory?.requestNextQuestion()
     }
     
     func switchToNextQuestion() {
@@ -49,14 +58,9 @@ final class MovieQuizPresenter: UIViewController {
         viewController?.showAnswerResult(isCorrect: givenAnswer == currentQuestion.correctAnswer)
     }
     
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        guard let question else { return }
-        currentQuestion = question
-        let viewModel = convert(model: question)
-        
-        DispatchQueue.main.async { [weak self] in
-            self?.viewController?.show(quiz: viewModel)
-            self?.viewController?.activityIndicator.stopAnimating()
+    func didAnswer(isCorrect: Bool) {
+        if isCorrect {
+            correctAnswers += 1
         }
     }
     
@@ -72,5 +76,28 @@ final class MovieQuizPresenter: UIViewController {
             self.switchToNextQuestion()
             questionFactory?.requestNextQuestion()
         }
+    }
+    
+    //MARK: - questionFactoryDelegate
+    
+    func didReceiveNextQuestion(question: QuizQuestion?) {
+        guard let question else { return }
+        currentQuestion = question
+        let viewModel = convert(model: question)
+        
+        DispatchQueue.main.async { [weak self] in
+            self?.viewController?.show(quiz: viewModel)
+            self?.viewController?.activityIndicator.stopAnimating()
+        }
+    }
+    
+    func didLoadDataFromServer() {
+        viewController?.hideLoadingIndicator()
+        questionFactory?.requestNextQuestion()
+    }
+    
+    func didFailToLoadData(with error: Error) {
+        let message = error.localizedDescription
+        viewController?.showNetworkError(message: message)
     }
 }

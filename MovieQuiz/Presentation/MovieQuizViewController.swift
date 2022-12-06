@@ -1,6 +1,6 @@
 import UIKit
 
-final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
+final class MovieQuizViewController: UIViewController {
         
     //MARK: - Outlets
     @IBOutlet private weak var textLabel: UILabel!
@@ -10,11 +10,9 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     @IBOutlet private var noButton: UIButton!
     @IBOutlet var activityIndicator: UIActivityIndicatorView!
     
-    private var correctAnswers: Int = 0
-    private var questionFactory: QuestionFactoryProtocol?
     private var alertPresenter: AlertPresenter?
     private var statisticService: StatisticServiceProtocol?
-    private let presenter = MovieQuizPresenter()
+    private var presenter: MovieQuizPresenter!
     
     
     func show(quiz step: QuizStepViewModel) {
@@ -30,10 +28,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
             buttonText: result.buttonText) { [weak self] _ in
                 guard let self = self else { return }
                 
-                self.presenter.resetQuestionIndex()
-                self.correctAnswers = 0
-                
-                self.questionFactory?.requestNextQuestion()
+                self.presenter.restartGame()
             }
         
         alertPresenter?.showAlert(alertModel: alertModel)
@@ -47,15 +42,11 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         yesButton.isEnabled = false
         noButton.isEnabled = false
         
-        if isCorrect {
-            correctAnswers += 1
-        }
+        presenter.didAnswer(isCorrect: isCorrect)
         
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
             guard let self else { return }
             
-            self.presenter.correctAnswers = self.correctAnswers
-            self.presenter.questionFactory = self.questionFactory
             self.presenter.showNextQuestionOrResults()
             
             self.imageView.layer.borderColor = UIColor.clear.cgColor
@@ -64,15 +55,17 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
         }
     }
     
-    private func showLoadingIndicator() {
+    //MARK: - ActivityIndicator
+    func showLoadingIndicator() {
         activityIndicator.startAnimating()
     }
     
-    private func hideLoadingIndicator() {
+    func hideLoadingIndicator() {
         activityIndicator.stopAnimating()
     }
     
-    private func showNetworkError(message: String) {
+    //MARK: - NetworkError
+    func showNetworkError(message: String) {
         hideLoadingIndicator()
         
         let alertModel = AlertModel(title: "Ошибка",
@@ -80,9 +73,7 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
                                     buttonText: "Попробовать еще раз") { [weak self] _ in
             guard let self = self else { return }
             
-            self.presenter.resetQuestionIndex()
-            self.correctAnswers = 0
-            
+            self.presenter.restartGame()
         }
         
         alertPresenter?.showAlert(alertModel: alertModel)
@@ -92,32 +83,16 @@ final class MovieQuizViewController: UIViewController, QuestionFactoryDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         
-        presenter.viewController = self
+        presenter = MovieQuizPresenter(viewController: self)
         
         statisticService = StatisticServiceImplementation()
-        
-        questionFactory = QuestionFactory(moviesLoader: MoviesLoader(), delegate: self)
         
         alertPresenter = AlertPresenter(delegate: self)
         
         activityIndicator.hidesWhenStopped = true
         
         showLoadingIndicator()
-        questionFactory?.loadData()
-    }
-    
-    //MARK: - QuestionFactoryDelegate
-    
-    func didReceiveNextQuestion(question: QuizQuestion?) {
-        presenter.didReceiveNextQuestion(question: question)
-    }
-    
-    func didLoadDataFromServer() {
-        questionFactory?.requestNextQuestion()
-    }
-
-    func didFailToLoadData(with error: Error) {
-        showNetworkError(message: error.localizedDescription)
+        
     }
     
     //MARK: - Actions
